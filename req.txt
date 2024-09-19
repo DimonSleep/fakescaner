@@ -1,0 +1,8 @@
+Flask
+scikit-learn
+nltk
+joblib
+numpy
+gunicorn
+Jinja2
+werkzeug

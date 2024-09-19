@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificare Știri</title>
+    <style>
+        /* Reset de bază */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .title {
+            text-align: center;
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            font-size: 1.1em;
+        }
+
+        input:focus, textarea:focus {
+            border-color: #4CAF50;
+            background-color: #fff;
+            outline: none;
+        }
+
+        /* Ajustare zona de text */
+        textarea {
+            height: 200px; /* Mărește zona de text */
+        }
+
+        /* Ajustare butoane */
+        button {
+            width: 60%; /* Setat la 60% lățime */
+            margin: 20px auto; /* Centrează butoanele */
+            display: block;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Zona de predicție */
+        #result {
+            font-weight: bold;
+            font-size: 1.5em;
+            margin-top: 20px;
+            border-radius: 10px;
+            padding: 15px;
+            width: 50%; /* Setează zona de predicție la 50% */
+            margin: 20px auto; /* Centrează zona de predicție */
+            text-align: center;
+        }
+
+        .result-adevarat {
+            color: #28a745;
+            border: 2px solid #28a745;
+            background-color: #e9f7f0;
+        }
+
+        .result-fals {
+            color: #dc3545;
+            border: 2px solid #dc3545;
+            background-color: #fce7e7;
+        }
+
+        .probabilitati {
+            font-size: 1.2em;
+            margin-top: 5px;
+            color: #555;
+            text-align: center;
+        }
+
+        #feedbackButton {
+            display: none;
+            background-color: #007bff;
+        }
+
+        #feedbackButton:hover {
+            background-color: #0069d9;
+        }
+
+        /* Form feedback ascuns inițial */
+        #feedbackForm {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+
+        #feedbackForm label {
+            margin-top: 10px;
+        }
+
+        #closeFeedback {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            width: 100px;
+            float: right;
+        }
+
+        #closeFeedback:hover {
+            background-color: #ff3333;
+        }
+
+        /* Responsivitate pentru telefoane */
+        @media only screen and (max-width: 600px) {
+            .title {
+                font-size: 2em;
+            }
+
+            input, textarea {
+                font-size: 1em;
+            }
+
+            button {
+                font-size: 1.2em;
+                width: 80%; /* Mai mare pe ecrane mici */
+            }
+
+            #result {
+                font-size: 1.2em;
+                width: 70%; /* Lățimea zonei de predicție pe ecrane mici */
+            }
+
+            .probabilitati {
+                font-size: 1em;
+            }
+        }
+    </style>
+    <script>
+        async function verificaStire() {
+            const titlu = document.getElementById('titlu').value;
+            const text = document.getElementById('text').value;
+
+            const response = await fetch('/verifica', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ titlu: titlu, text: text }),
+            });
+
+            const result = await response.json();
+
+            const resultDiv = document.getElementById('result');
+            const probabilitatiDiv = document.getElementById('probabilitati');
+            const feedbackButton = document.getElementById('feedbackButton');
+
+            if (response.ok) {
+                resultDiv.className = '';
+
+                if (result.predictie === 'Adevărată') {
+                    resultDiv.classList.add('result-adevarat');
+                    resultDiv.innerText = `Predicție: ${result.predictie}`;
+                } else {
+                    resultDiv.classList.add('result-fals');
+                    resultDiv.innerText = `Predicție: ${result.predictie}`;
+                }
+
+                probabilitatiDiv.innerText = 
+                    `Probabilitate Adevărată: ${result.probabilitate_adevarata}%\nProbabilitate Falsă: ${result.probabilitate_falsa}%`;
+
+                feedbackButton.style.display = 'block';
+            } else {
+                resultDiv.className = 'result-fals';
+                resultDiv.innerText = `Eroare: ${result.error}`;
+            }
+        }
+
+        function showFeedbackForm() {
+            document.getElementById('feedbackForm').style.display = 'block';
+        }
+
+        function closeFeedbackForm() {
+            document.getElementById('feedbackForm').style.display = 'none';
+        }
+
+        async function trimiteFeedback() {
+            const titlu = document.getElementById('titlu').value;
+            const text = document.getElementById('text').value;
+            const argument = document.getElementById('argument').value;
+            const sursa = document.getElementById('sursa').value;
+            const nume = document.getElementById('nume').value;
+            const email = document.getElementById('email').value;
+            const telefon = document.getElementById('telefon').value;
+
+            const feedbackData = {
+                titlu,
+                text,
+                argument,
+                sursa,
+                nume,
+                email,
+                telefon
+            };
+
+            const response = await fetch('/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(feedbackData),
+            });
+
+            if (response.ok) {
+                alert('Feedback trimis cu succes!');
+                document.getElementById('feedbackForm').reset();
+                document.getElementById('feedbackForm').style.display = 'none';
+            } else {
+                alert('A apărut o eroare la trimiterea feedback-ului.');
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Verificare Știri</h1>
+        
+        <!-- Form pentru verificarea știrii -->
+        <div class="form-group">
+            <label for="titlu">Titlu:</label>
+            <input type="text" id="titlu" name="titlu" placeholder="Introdu titlul știrii">
+        </div>
+
+        <div class="form-group">
+            <label for="text">Textul articolului:</label>
+            <textarea id="text" name="text" rows="4" cols="50" placeholder="Introdu textul articolului"></textarea>
+        </div>
+
+        <button onclick="verificaStire()">Verifică</button>
+
+        <div id="result"></div>
+        <pre id="probabilitati" class="probabilitati"></pre>
+
+        <!-- Buton pentru feedback -->
+        <button id="feedbackButton" onclick="showFeedbackForm()">Nu sunt de acord cu predicția</button>
+
+        <!-- Formular de feedback -->
+        <div id="feedbackForm">
+            <button id="closeFeedback" onclick="closeFeedbackForm()">Închide</button>
+            <h2>Feedback</h2>
+            <label for="argument">De ce nu sunteți de acord?</label>
+            <textarea id="argument" name="argument" rows="4" placeholder="Argumentează de ce consideri că predicția este greșită"></textarea><br><br>
+            <label for="sursa">Sursa care contrazice predicția:</label>
+            <input type="text" id="sursa" name="sursa" placeholder="Introdu sursa articolului care contrazice"><br><br>
+            <label for="nume">Nume (opțional):</label>
+            <input type="text" id="nume" name="nume" placeholder="Introdu numele tău"><br><br>
+            <label for="email">Email (opțional):</label>
+            <input type="email" id="email" name="email" placeholder="Introdu adresa ta de email"><br><br>
+            <label for="telefon">Telefon (opțional):</label>
+            <input type="tel" id="telefon" name="telefon" placeholder="Introdu numărul tău de telefon"><br><br>
+            <button onclick="trimiteFeedback()">Trimite Feedback</button>
+        </div>
+    </div>
+</body>
+</html>
+
