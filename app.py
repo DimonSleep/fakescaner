@@ -5,6 +5,13 @@ import json
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem import WordNetLemmatizer
 import os
+import nltk
+
+# Asigură-te că resursele necesare sunt descărcate
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+# Continuarea codului aplicației tale...
 
 
 app = Flask(__name__)
