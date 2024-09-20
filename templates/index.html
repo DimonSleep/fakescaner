@@ -232,6 +232,14 @@
             document.getElementById('feedbackForm').style.display = 'none';
         }
 
+        function resetForm() {
+            document.getElementById('titlu').value = '';
+            document.getElementById('text').value = '';
+            document.getElementById('result').innerText = '';
+            document.getElementById('probabilitati').innerText = '';
+            document.getElementById('feedbackForm').style.display = 'none';
+        }
+
         async function trimiteFeedback() {
             const titlu = document.getElementById('titlu').value;
             const text = document.getElementById('text').value;
@@ -278,13 +286,13 @@
             <label for="titlu">Titlu:</label>
             <input type="text" id="titlu" name="titlu" placeholder="Introdu titlul știrii">
         </div>
-
-        <div class="form-group">
+                <div class="form-group">
             <label for="text">Textul articolului:</label>
             <textarea id="text" name="text" rows="4" cols="50" placeholder="Introdu textul articolului"></textarea>
         </div>
 
         <button onclick="verificaStire()">Verifică</button>
+        <button onclick="resetForm()" style="background-color: #f44336;">Resetează</button>
 
         <div id="result"></div>
         <pre id="probabilitati" class="probabilitati"></pre>
@@ -312,3 +320,4 @@
 </body>
 </html>
 
+       
