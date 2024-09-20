@@ -1,18 +1,17 @@
 from flask import Flask, request, jsonify, render_template
 import joblib
 import re
+import os
 import json
+import psycopg2  # Pentru PostgreSQL
+from psycopg2 import sql
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem import WordNetLemmatizer
-import os
 import nltk
 
 # Asigură-te că resursele necesare sunt descărcate
 nltk.download('wordnet')
 nltk.download('stopwords')
-
-# Continuarea codului aplicației tale...
-
 
 app = Flask(__name__)
 
@@ -31,6 +30,36 @@ def preprocesare_text(text):
     text = re.sub(r'\W', ' ', text)
     text = re.sub(r'\d+', '', text)
     return ' '.join([lemmatizer.lemmatize(word) for word in text.split()])
+
+# Conectare la PostgreSQL
+def get_db_connection():
+    conn = psycopg2.connect(
+        host=os.getenv('PGHOST'),
+        database=os.getenv('PGDATABASE'),
+        user=os.getenv('PGUSER'),
+        password=os.getenv('PGPASSWORD')
+    )
+    return conn
+
+# Creare tabelă pentru feedback (rulăm o dată pentru a crea tabelul)
+def create_feedback_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id SERIAL PRIMARY KEY,
+            titlu TEXT,
+            text TEXT,
+            argument TEXT,
+            sursa TEXT,
+            nume TEXT,
+            email TEXT,
+            telefon TEXT
+        )
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
 
 # Ruta pentru afișarea paginii HTML
 @app.route('/')
@@ -76,24 +105,34 @@ def verifica_articol():
 def feedback():
     try:
         feedback_data = request.get_json()
+        conn = get_db_connection()
+        cur = conn.cursor()
 
-        # Citim datele existente din feedback.json
-        try:
-            with open('feedback.json', 'r') as f:
-                feedback_list = json.load(f)
-        except FileNotFoundError:
-            feedback_list = []
+        # Salvăm feedback-ul în baza de date
+        cur.execute(
+            '''
+            INSERT INTO feedback (titlu, text, argument, sursa, nume, email, telefon)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''',
+            (
+                feedback_data['titlu'],
+                feedback_data['text'],
+                feedback_data['argument'],
+                feedback_data['sursa'],
+                feedback_data['nume'],
+                feedback_data['email'],
+                feedback_data['telefon']
+            )
+        )
 
-        # Adăugăm noul feedback
-        feedback_list.append(feedback_data)
-
-        # Salvăm toate datele înapoi în feedback.json
-        with open('feedback.json', 'w') as f:
-            json.dump(feedback_list, f, indent=4)
+        conn.commit()
+        cur.close()
+        conn.close()
 
         return jsonify({"message": "Feedback trimis cu succes!"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-
+if __name__ == "__main__":
+    create_feedback_table()  # Creăm tabelul la pornirea aplicației
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
