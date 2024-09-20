@@ -71,10 +71,15 @@
         }
 
         /* Ajustare butoane */
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+
         button {
             width: 60%; /* Setat la 60% lățime */
-            margin: 20px auto; /* Centrează butoanele */
-            display: block;
             padding: 15px;
             background-color: #4CAF50;
             color: white;
@@ -87,6 +92,16 @@
 
         button:hover {
             background-color: #45a049;
+        }
+
+        /* Stil pentru butonul de resetare */
+        .reset-button {
+            width: 35%; /* Butonul de resetare va fi mai mic */
+            background-color: #f44336;
+        }
+
+        .reset-button:hover {
+            background-color: #e63939;
         }
 
         /* Zona de predicție */
@@ -181,6 +196,19 @@
 
             .probabilitati {
                 font-size: 1em;
+            }
+
+            .button-container {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .reset-button {
+                width: 100%;
             }
         }
     </style>
@@ -279,20 +307,24 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="title">Verificare Știri</h1>
+        <h1 class="title">Verificare Șt        iri</h1>
         
         <!-- Form pentru verificarea știrii -->
         <div class="form-group">
             <label for="titlu">Titlu:</label>
             <input type="text" id="titlu" name="titlu" placeholder="Introdu titlul știrii">
         </div>
-                <div class="form-group">
+
+        <div class="form-group">
             <label for="text">Textul articolului:</label>
             <textarea id="text" name="text" rows="4" cols="50" placeholder="Introdu textul articolului"></textarea>
         </div>
 
-        <button onclick="verificaStire()">Verifică</button>
-        <button onclick="resetForm()" style="background-color: #f44336;">Resetează</button>
+        <!-- Butoane Verificare și Resetează grupate -->
+        <div class="button-container">
+            <button onclick="verificaStire()">Verifică</button>
+            <button class="reset-button" onclick="resetForm()">Resetează</button>
+        </div>
 
         <div id="result"></div>
         <pre id="probabilitati" class="probabilitati"></pre>
@@ -320,4 +352,3 @@
 </body>
 </html>
 
-       
