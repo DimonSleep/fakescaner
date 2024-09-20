@@ -8,6 +8,8 @@ from psycopg2 import sql
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem import WordNetLemmatizer
 import nltk
+from flask_cors import CORS
+CORS(app)
 
 # Asigură-te că resursele necesare sunt descărcate
 nltk.download('wordnet')
