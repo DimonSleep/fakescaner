@@ -1,11 +1,14 @@
+
 from flask import Flask, request, jsonify, render_template
 import joblib
 import re
 import os
+import json
+import psycopg2  # Pentru PostgreSQL
+from psycopg2 import sql
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.stem import WordNetLemmatizer
 import nltk
-import gdown
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import torch
 from flask_cors import CORS
 
 # Asigură-te că resursele necesare sunt descărcate
@@ -15,45 +18,53 @@ nltk.download('stopwords')
 app = Flask(__name__)
 CORS(app)
 
-# Setăm calea pentru modelul de propagandă
-model_dir = "distilbert_propaganda_model"
-model_path = os.path.join(model_dir, "model.safetensors")
+# Încărcăm vectorizatorul și modelul
+with open('tfidf_vectorizer.pkl', 'rb') as f:
+    vectorizer = joblib.load(f)
 
-# Link-ul către modelul de pe Google Drive (folosește link-ul tău specific)
-model_url = 'https://drive.google.com/uc?id=1-7Wtfdj1qQM1qCVcbDdxsG1UT12y5o4s'  # Link-ul tău către model
+with open('ensemble_news_classifier_ro.pkl', 'rb') as f:
+    model = joblib.load(f)
 
-# Funcție pentru descărcarea modelului de pe Google Drive
-def download_model():
-    if not os.path.exists(model_path):
-        os.makedirs(model_dir, exist_ok=True)
-        gdown.download(model_url, model_path, quiet=False)
-        print("Modelul a fost descărcat cu succes.")
-
-# Descărcăm modelul dacă nu există local
-download_model()
-
-# Încarcă modelul de propagandă și tokenizatorul
-propaganda_model = AutoModelForSequenceClassification.from_pretrained(model_dir)
-propaganda_tokenizer = AutoTokenizer.from_pretrained(model_dir)
-propaganda_model.eval()
+lemmatizer = WordNetLemmatizer()
 
 # Funcție pentru preprocesare text
 def preprocesare_text(text):
     text = text.lower()
     text = re.sub(r'\W', ' ', text)
     text = re.sub(r'\d+', '', text)
-    return text
+    return ' '.join([lemmatizer.lemmatize(word) for word in text.split()])
 
-# Funcție de predicție pentru propagandă
-def predict_propaganda(text):
-    inputs = propaganda_tokenizer(text, return_tensors="pt", padding="max_length", truncation=True, max_length=512)
-    with torch.no_grad():
-        outputs = propaganda_model(**inputs)
-        logits = outputs.logits
-        predicted_class = torch.argmax(logits, dim=1).item()
-    return "Propaganda" if predicted_class == 1 else "Non-Propaganda"
+# Conectare la PostgreSQL
+def get_db_connection():
+    conn = psycopg2.connect(
+        host=os.getenv('PGHOST'),
+        database=os.getenv('PGDATABASE'),
+        user=os.getenv('PGUSER'),
+        password=os.getenv('PGPASSWORD')
+    )
+    return conn
 
-# Ruta pentru afișarea paginii HTML principale
+# Creare tabelă pentru feedback (rulăm o dată pentru a crea tabelul)
+def create_feedback_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS feedback (
+            id SERIAL PRIMARY KEY,
+            titlu TEXT,
+            text TEXT,
+            argument TEXT,
+            sursa TEXT,
+            nume TEXT,
+            email TEXT,
+            telefon TEXT
+        )
+    ''')
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# Ruta pentru afișarea paginii HTML
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -63,8 +74,8 @@ def home():
 def verifica_articol():
     try:
         data = request.get_json()
-        titlu = data.get('titlu', '')
-        text = data.get('text', '')
+        titlu = data.get('titlu')
+        text = data.get('text')
 
         if not titlu or not text:
             return jsonify({"error": "Titlu sau text lipsă"}), 400
@@ -73,14 +84,58 @@ def verifica_articol():
         titlu_text = titlu + ' ' + text
         titlu_text = preprocesare_text(titlu_text)
 
-        # Detectăm dacă textul este propagandă
-        rezultat_propaganda = predict_propaganda(titlu_text)
+        # Verificăm știrea cu modelul Ensemble
+        text_vec = vectorizer.transform([titlu_text])
+        predictie = model.predict(text_vec)
+        probabilitati = model.predict_proba(text_vec)
+
+        # Procentajul pentru clasa 'Falsă' și 'Adevărată'
+        probabilitate_falsa = probabilitati[0][0] * 100
+        probabilitate_adevarata = probabilitati[0][1] * 100
+
+        rezultat = 'Adevărată' if predictie[0] == 1 else 'Falsă'
 
         return jsonify({
-            "predictie_propaganda": rezultat_propaganda
+            "predictie": rezultat,
+            "probabilitate_adevarata": round(probabilitate_adevarata, 2),
+            "probabilitate_falsa": round(probabilitate_falsa, 2)
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Ruta pentru gestionarea feedback-ului
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    try:
+        feedback_data = request.get_json()
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Salvăm feedback-ul în baza de date
+        cur.execute(
+            '''
+            INSERT INTO feedback (titlu, text, argument, sursa, nume, email, telefon)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''',
+            (
+                feedback_data['titlu'],
+                feedback_data['text'],
+                feedback_data['argument'],
+                feedback_data['sursa'],
+                feedback_data['nume'],
+                feedback_data['email'],
+                feedback_data['telefon']
+            )
+        )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Feedback trimis cu succes!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
+    create_feedback_table()  # Creăm tabelul la pornirea aplicației
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
