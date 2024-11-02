@@ -11,3 +11,4 @@ Werkzeug
 psycopg2
 flask-cors
 transformers
+gdown
