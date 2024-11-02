@@ -65,12 +65,10 @@
             outline: none;
         }
 
-        /* Ajustare zona de text */
         textarea {
-            height: 200px; /* Mărește zona de text */
+            height: 200px;
         }
 
-        /* Ajustare butoane */
         .button-container {
             display: flex;
             justify-content: space-between;
@@ -79,7 +77,7 @@
         }
 
         button {
-            width: 60%; /* Setat la 60% lățime */
+            width: 60%;
             padding: 15px;
             background-color: #4CAF50;
             color: white;
@@ -94,9 +92,8 @@
             background-color: #45a049;
         }
 
-        /* Stil pentru butonul de resetare */
         .reset-button {
-            width: 35%; /* Butonul de resetare va fi mai mic */
+            width: 35%;
             background-color: #f44336;
         }
 
@@ -104,15 +101,14 @@
             background-color: #e63939;
         }
 
-        /* Zona de predicție */
-        #result {
+        #result, #propaganda {
             font-weight: bold;
             font-size: 1.5em;
             margin-top: 20px;
             border-radius: 10px;
             padding: 15px;
-            width: 50%; /* Setează zona de predicție la 50% */
-            margin: 20px auto; /* Centrează zona de predicție */
+            width: 50%;
+            margin: 20px auto;
             text-align: center;
         }
 
@@ -126,6 +122,18 @@
             color: #dc3545;
             border: 2px solid #dc3545;
             background-color: #fce7e7;
+        }
+
+        .result-propaganda {
+            color: #FFB400;
+            border: 2px solid #FFB400;
+            background-color: #FFF5E1;
+        }
+
+        .result-non-propaganda {
+            color: #28a745;
+            border: 2px solid #28a745;
+            background-color: #e9f7f0;
         }
 
         .probabilitati {
@@ -144,7 +152,6 @@
             background-color: #0069d9;
         }
 
-        /* Form feedback ascuns inițial */
         #feedbackForm {
             display: none;
             margin-top: 20px;
@@ -174,7 +181,6 @@
             background-color: #ff3333;
         }
 
-        /* Responsivitate pentru telefoane */
         @media only screen and (max-width: 600px) {
             .title {
                 font-size: 2em;
@@ -186,12 +192,12 @@
 
             button {
                 font-size: 1.2em;
-                width: 80%; /* Mai mare pe ecrane mici */
+                width: 80%;
             }
 
-            #result {
+            #result, #propaganda {
                 font-size: 1.2em;
-                width: 70%; /* Lățimea zonei de predicție pe ecrane mici */
+                width: 70%;
             }
 
             .probabilitati {
@@ -229,21 +235,33 @@
 
             const resultDiv = document.getElementById('result');
             const probabilitatiDiv = document.getElementById('probabilitati');
+            const propagandaDiv = document.getElementById('propaganda');
             const feedbackButton = document.getElementById('feedbackButton');
 
             if (response.ok) {
                 resultDiv.className = '';
+                propagandaDiv.className = '';
 
-                if (result.predictie === 'Adevărată') {
+                // Afișare fake news
+                if (result.predictie_fake_news === 'Adevărată') {
                     resultDiv.classList.add('result-adevarat');
-                    resultDiv.innerText = `Predicție: ${result.predictie}`;
+                    resultDiv.innerText = `Predicție Știrii: ${result.predictie_fake_news}`;
                 } else {
                     resultDiv.classList.add('result-fals');
-                    resultDiv.innerText = `Predicție: ${result.predictie}`;
+                    resultDiv.innerText = `Predicție Știrii: ${result.predictie_fake_news}`;
                 }
 
                 probabilitatiDiv.innerText = 
                     `Probabilitate Adevărată: ${result.probabilitate_adevarata}%\nProbabilitate Falsă: ${result.probabilitate_falsa}%`;
+
+                // Afișare propagandă
+                if (result.predictie_propaganda === 'Propaganda') {
+                    propagandaDiv.classList.add('result-propaganda');
+                    propagandaDiv.innerText = `Predicție Siguranță: Propagandă`;
+                } else {
+                    propagandaDiv.classList.add('result-non-propaganda');
+                    propagandaDiv.innerText = `Predicție Siguranță: Non-Propagandă`;
+                }
 
                 feedbackButton.style.display = 'block';
             } else {
@@ -265,43 +283,8 @@
             document.getElementById('text').value = '';
             document.getElementById('result').innerText = '';
             document.getElementById('probabilitati').innerText = '';
+            document.getElementById('propaganda').innerText = '';
             document.getElementById('feedbackForm').style.display = 'none';
-        }
-
-        async function trimiteFeedback() {
-            const titlu = document.getElementById('titlu').value;
-            const text = document.getElementById('text').value;
-            const argument = document.getElementById('argument').value;
-            const sursa = document.getElementById('sursa').value;
-            const nume = document.getElementById('nume').value;
-            const email = document.getElementById('email').value;
-            const telefon = document.getElementById('telefon').value;
-
-            const feedbackData = {
-                titlu,
-                text,
-                argument,
-                sursa,
-                nume,
-                email,
-                telefon
-            };
-
-            const response = await fetch('/feedback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(feedbackData),
-            });
-
-            if (response.ok) {
-                alert('Feedback trimis cu succes!');
-                document.getElementById('feedbackForm').reset();
-                document.getElementById('feedbackForm').style.display = 'none';
-            } else {
-                alert('A apărut o eroare la trimiterea feedback-ului.');
-            }
         }
     </script>
 </head>
@@ -309,7 +292,6 @@
     <div class="container">
         <h1 class="title">Verificare Știri</h1>
         
-        <!-- Form pentru verificarea știrii -->
         <div class="form-group">
             <label for="titlu">Titlu:</label>
             <input type="text" id="titlu" name="titlu" placeholder="Introdu titlul știrii">
@@ -320,7 +302,6 @@
             <textarea id="text" name="text" rows="4" cols="50" placeholder="Introdu textul articolului"></textarea>
         </div>
 
-        <!-- Butoane Verificare și Resetează grupate -->
         <div class="button-container">
             <button onclick="verificaStire()">Verifică</button>
             <button class="reset-button" onclick="resetForm()">Resetează</button>
@@ -328,8 +309,8 @@
 
         <div id="result"></div>
         <pre id="probabilitati" class="probabilitati"></pre>
+        <div id="propaganda" class="probabilitati"></div>
 
-        <!-- Buton pentru feedback -->
         <center><button id="feedbackButton" onclick="showFeedbackForm()">Nu sunt de acord cu predicția</button></center>
 
         <!-- Formular de feedback -->
