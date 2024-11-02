@@ -1,15 +1,20 @@
-
 from flask import Flask, request, jsonify, render_template
 import joblib
 import re
 import os
-import json
-import psycopg2  # Pentru PostgreSQL
+import psycopg2
 from psycopg2 import sql
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem import WordNetLemmatizer
 import nltk
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from flask_cors import CORS
+from huggingface_hub import HfApi
+
+# Configurare token Hugging Face pentru autentificare și acces la modelul privat
+token = "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"  # Token-ul tău personal
+model_name = "dimonsleep/antipropaganda"
 
 # Asigură-te că resursele necesare sunt descărcate
 nltk.download('wordnet')
@@ -18,14 +23,19 @@ nltk.download('stopwords')
 app = Flask(__name__)
 CORS(app)
 
-# Încărcăm vectorizatorul și modelul
+# Încărcare model și vectorizator pentru detectarea știrilor false
 with open('tfidf_vectorizer.pkl', 'rb') as f:
     vectorizer = joblib.load(f)
 
 with open('ensemble_news_classifier_ro.pkl', 'rb') as f:
-    model = joblib.load(f)
+    model_false_news = joblib.load(f)
 
 lemmatizer = WordNetLemmatizer()
+
+# Încărcare model Hugging Face pentru detectarea propagandei
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=token)
+model_propaganda = AutoModelForSequenceClassification.from_pretrained(model_name, use_auth_token=token)
+model_propaganda.eval()
 
 # Funcție pentru preprocesare text
 def preprocesare_text(text):
@@ -80,25 +90,30 @@ def verifica_articol():
         if not titlu or not text:
             return jsonify({"error": "Titlu sau text lipsă"}), 400
 
-        # Preprocesăm titlul și textul
-        titlu_text = titlu + ' ' + text
-        titlu_text = preprocesare_text(titlu_text)
+        # Preprocesăm titlul și textul pentru verificarea știrilor false
+        articol = titlu + ' ' + text
+        articol_proc = preprocesare_text(articol)
+        text_vec = vectorizer.transform([articol_proc])
+        predictie_false_news = model_false_news.predict(text_vec)
+        probabilitati_false_news = model_false_news.predict_proba(text_vec)
 
-        # Verificăm știrea cu modelul Ensemble
-        text_vec = vectorizer.transform([titlu_text])
-        predictie = model.predict(text_vec)
-        probabilitati = model.predict_proba(text_vec)
+        probabilitate_falsa = probabilitati_false_news[0][0] * 100
+        probabilitate_adevarata = probabilitati_false_news[0][1] * 100
+        rezultat_false_news = 'Adevărată' if predictie_false_news[0] == 1 else 'Falsă'
 
-        # Procentajul pentru clasa 'Falsă' și 'Adevărată'
-        probabilitate_falsa = probabilitati[0][0] * 100
-        probabilitate_adevarata = probabilitati[0][1] * 100
-
-        rezultat = 'Adevărată' if predictie[0] == 1 else 'Falsă'
+        # Verificare propagandă
+        inputs = tokenizer(articol, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            outputs = model_propaganda(**inputs)
+            logits = outputs.logits
+            predictie_propaganda = torch.argmax(logits, dim=1).item()
+        rezultat_propaganda = "Propaganda" if predictie_propaganda == 1 else "Non-Propaganda"
 
         return jsonify({
-            "predictie": rezultat,
+            "predictie_false_news": rezultat_false_news,
             "probabilitate_adevarata": round(probabilitate_adevarata, 2),
-            "probabilitate_falsa": round(probabilitate_falsa, 2)
+            "probabilitate_falsa": round(probabilitate_falsa, 2),
+            "predictie_propaganda": rezultat_propaganda
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -110,8 +125,6 @@ def feedback():
         feedback_data = request.get_json()
         conn = get_db_connection()
         cur = conn.cursor()
-
-        # Salvăm feedback-ul în baza de date
         cur.execute(
             '''
             INSERT INTO feedback (titlu, text, argument, sursa, nume, email, telefon)
@@ -127,7 +140,6 @@ def feedback():
                 feedback_data['telefon']
             )
         )
-
         conn.commit()
         cur.close()
         conn.close()
