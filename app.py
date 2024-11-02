@@ -2,26 +2,32 @@ from flask import Flask, request, jsonify, render_template
 import joblib
 import re
 import os
+import gdown
+import zipfile
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.stem import WordNetLemmatizer
 import nltk
+from flask_cors import CORS
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import torch
-import gdown  # pentru descărcarea modelului de pe Google Drive
 
+# Asigură-te că resursele necesare sunt descărcate
 nltk.download('wordnet')
 nltk.download('stopwords')
 
 app = Flask(__name__)
+CORS(app)
 
-# Descărcare model propagandă dacă nu este disponibil local
-def download_propaganda_model():
-    if not os.path.exists("distilbert_propaganda_model/model.safetensors"):
-        url = "https://drive.google.com/uc?id=1-7Wtfdj1qQM1qCVcbDdxsG1UT12y5o4s"  # ID-ul fișierului de pe Google Drive
-        os.makedirs("distilbert_propaganda_model", exist_ok=True)
-        gdown.download(url, "distilbert_propaganda_model/model.safetensors", quiet=False)
+# Descărcare model de pe Google Drive, dacă nu există deja
+model_url = "https://drive.google.com/uc?id=1-7Wtfdj1qQM1qCVcbDdxsG1UT12y5o4s"  # ID-ul modelului din linkul tău
+model_path = "distilbert_propaganda_model"
 
-download_propaganda_model()
+if not os.path.exists(model_path):
+    os.makedirs(model_path, exist_ok=True)
+    gdown.download(model_url, os.path.join(model_path, "model.zip"), quiet=False, fuzzy=True)
+
+    with zipfile.ZipFile(os.path.join(model_path, "model.zip"), 'r') as zip_ref:
+        zip_ref.extractall(model_path)
 
 # Încărcăm vectorizatorul și modelul de detectare fake news
 with open('tfidf_vectorizer.pkl', 'rb') as f:
@@ -32,10 +38,9 @@ with open('ensemble_news_classifier_ro.pkl', 'rb') as f:
 
 lemmatizer = WordNetLemmatizer()
 
-# Încarcă modelul personalizat de propagandă și tokenizatorul
-propaganda_model_path = "distilbert_propaganda_model"
-propaganda_model = AutoModelForSequenceClassification.from_pretrained(propaganda_model_path)
-propaganda_tokenizer = AutoTokenizer.from_pretrained(propaganda_model_path)
+# Încarcă modelul de propagandă și tokenizerul
+propaganda_model = AutoModelForSequenceClassification.from_pretrained(model_path)
+propaganda_tokenizer = AutoTokenizer.from_pretrained(model_path)
 propaganda_model.eval()
 
 # Funcție pentru preprocesare text
@@ -97,4 +102,4 @@ def verifica_articol():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
