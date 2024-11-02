@@ -26,7 +26,7 @@ with open('ensemble_news_classifier_ro.pkl', 'rb') as f:
 lemmatizer = WordNetLemmatizer()
 
 # Încarcă modelul personalizat de propagandă și tokenizatorul
-propaganda_model_path = r'.\distilbert_propaganda_model'  # Schimbă calea dacă este diferită
+propaganda_model_path = "./distilbert_propaganda_model"  # cale relativă fără simbolul punct
 propaganda_model = AutoModelForSequenceClassification.from_pretrained(propaganda_model_path)
 propaganda_tokenizer = AutoTokenizer.from_pretrained(propaganda_model_path)
 propaganda_model.eval()
