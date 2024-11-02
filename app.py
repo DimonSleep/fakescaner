@@ -2,14 +2,11 @@ from flask import Flask, request, jsonify, render_template
 import joblib
 import re
 import os
-import gdown
-import zipfile
-from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.stem import WordNetLemmatizer
 import nltk
-from flask_cors import CORS
+import gdown
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import torch
+from flask_cors import CORS
 
 # Asigură-te că resursele necesare sunt descărcate
 nltk.download('wordnet')
@@ -18,29 +15,26 @@ nltk.download('stopwords')
 app = Flask(__name__)
 CORS(app)
 
-# Descărcare model de pe Google Drive, dacă nu există deja
-model_url = "https://drive.google.com/uc?id=1-7Wtfdj1qQM1qCVcbDdxsG1UT12y5o4s"  # ID-ul modelului din linkul tău
-model_path = "distilbert_propaganda_model"
+# Setăm calea pentru modelul de propagandă
+model_dir = "distilbert_propaganda_model"
+model_path = os.path.join(model_dir, "model.safetensors")
 
-if not os.path.exists(model_path):
-    os.makedirs(model_path, exist_ok=True)
-    gdown.download(model_url, os.path.join(model_path, "model.zip"), quiet=False, fuzzy=True)
+# Link-ul către modelul de pe Google Drive (folosește link-ul tău specific)
+model_url = 'https://drive.google.com/uc?id=1-7Wtfdj1qQM1qCVcbDdxsG1UT12y5o4s'  # Link-ul tău către model
 
-    with zipfile.ZipFile(os.path.join(model_path, "model.zip"), 'r') as zip_ref:
-        zip_ref.extractall(model_path)
+# Funcție pentru descărcarea modelului de pe Google Drive
+def download_model():
+    if not os.path.exists(model_path):
+        os.makedirs(model_dir, exist_ok=True)
+        gdown.download(model_url, model_path, quiet=False)
+        print("Modelul a fost descărcat cu succes.")
 
-# Încărcăm vectorizatorul și modelul de detectare fake news
-with open('tfidf_vectorizer.pkl', 'rb') as f:
-    vectorizer = joblib.load(f)
+# Descărcăm modelul dacă nu există local
+download_model()
 
-with open('ensemble_news_classifier_ro.pkl', 'rb') as f:
-    model = joblib.load(f)
-
-lemmatizer = WordNetLemmatizer()
-
-# Încarcă modelul de propagandă și tokenizerul
-propaganda_model = AutoModelForSequenceClassification.from_pretrained(model_path)
-propaganda_tokenizer = AutoTokenizer.from_pretrained(model_path)
+# Încarcă modelul de propagandă și tokenizatorul
+propaganda_model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+propaganda_tokenizer = AutoTokenizer.from_pretrained(model_dir)
 propaganda_model.eval()
 
 # Funcție pentru preprocesare text
@@ -48,9 +42,9 @@ def preprocesare_text(text):
     text = text.lower()
     text = re.sub(r'\W', ' ', text)
     text = re.sub(r'\d+', '', text)
-    return ' '.join([lemmatizer.lemmatize(word) for word in text.split()])
+    return text
 
-# Funcție de predicție propagandă
+# Funcție de predicție pentru propagandă
 def predict_propaganda(text):
     inputs = propaganda_tokenizer(text, return_tensors="pt", padding="max_length", truncation=True, max_length=512)
     with torch.no_grad():
@@ -69,8 +63,8 @@ def home():
 def verifica_articol():
     try:
         data = request.get_json()
-        titlu = data.get('titlu')
-        text = data.get('text')
+        titlu = data.get('titlu', '')
+        text = data.get('text', '')
 
         if not titlu or not text:
             return jsonify({"error": "Titlu sau text lipsă"}), 400
@@ -79,27 +73,14 @@ def verifica_articol():
         titlu_text = titlu + ' ' + text
         titlu_text = preprocesare_text(titlu_text)
 
-        # Verificăm știrea cu modelul Ensemble (fake news)
-        text_vec = vectorizer.transform([titlu_text])
-        predictie = model.predict(text_vec)
-        probabilitati = model.predict_proba(text_vec)
-
-        # Procentajul pentru clasa 'Falsă' și 'Adevărată'
-        probabilitate_falsa = probabilitati[0][0] * 100
-        probabilitate_adevarata = probabilitati[0][1] * 100
-        rezultat_fake_news = 'Adevărată' if predictie[0] == 1 else 'Falsă'
-
-        # Detectăm dacă textul este propagandă folosind modelul personalizat
-        rezultat_propaganda = predict_propaganda(text)
+        # Detectăm dacă textul este propagandă
+        rezultat_propaganda = predict_propaganda(titlu_text)
 
         return jsonify({
-            "predictie_fake_news": rezultat_fake_news,
-            "probabilitate_adevarata": round(probabilitate_adevarata, 2),
-            "probabilitate_falsa": round(probabilitate_falsa, 2),
             "predictie_propaganda": rezultat_propaganda
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
