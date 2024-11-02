@@ -10,3 +10,4 @@ tqdm
 Werkzeug
 psycopg2
 flask-cors
+transformers
