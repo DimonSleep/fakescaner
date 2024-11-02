@@ -11,7 +11,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-
         body {
             font-family: 'Arial', sans-serif;
             background-color: #f0f4f8;
@@ -21,7 +20,6 @@
             min-height: 100vh;
             padding: 20px;
         }
-
         .container {
             background-color: #ffffff;
             border-radius: 20px;
@@ -30,18 +28,15 @@
             max-width: 800px;
             width: 100%;
         }
-
         .title {
             text-align: center;
             color: #333;
             font-size: 2.5em;
             margin-bottom: 20px;
         }
-
         .form-group {
             margin-bottom: 20px;
         }
-
         label {
             font-weight: bold;
             color: #555;
@@ -49,7 +44,6 @@
             margin-bottom: 10px;
             font-size: 1.2em;
         }
-
         input, textarea {
             width: 100%;
             padding: 15px;
@@ -58,24 +52,20 @@
             background-color: #f9f9f9;
             font-size: 1.1em;
         }
-
         input:focus, textarea:focus {
             border-color: #4CAF50;
             background-color: #fff;
             outline: none;
         }
-
         textarea {
             height: 200px;
         }
-
         .button-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-top: 20px;
         }
-
         button {
             width: 60%;
             padding: 15px;
@@ -87,20 +77,16 @@
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
-
         button:hover {
             background-color: #45a049;
         }
-
         .reset-button {
             width: 35%;
             background-color: #f44336;
         }
-
         .reset-button:hover {
             background-color: #e63939;
         }
-
         #result, #propaganda {
             font-weight: bold;
             font-size: 1.5em;
@@ -111,47 +97,39 @@
             margin: 20px auto;
             text-align: center;
         }
-
         .result-adevarat {
             color: #28a745;
             border: 2px solid #28a745;
             background-color: #e9f7f0;
         }
-
         .result-fals {
             color: #dc3545;
             border: 2px solid #dc3545;
             background-color: #fce7e7;
         }
-
         .result-propaganda {
             color: #FFB400;
             border: 2px solid #FFB400;
             background-color: #FFF5E1;
         }
-
         .result-non-propaganda {
             color: #28a745;
             border: 2px solid #28a745;
             background-color: #e9f7f0;
         }
-
         .probabilitati {
             font-size: 1.2em;
             margin-top: 5px;
             color: #555;
             text-align: center;
         }
-
         #feedbackButton {
             display: none;
             background-color: #007bff;
         }
-
         #feedbackButton:hover {
             background-color: #0069d9;
         }
-
         #feedbackForm {
             display: none;
             margin-top: 20px;
@@ -160,11 +138,9 @@
             border-radius: 10px;
             background-color: #f9f9f9;
         }
-
         #feedbackForm label {
             margin-top: 10px;
         }
-
         #closeFeedback {
             background-color: #ff4d4d;
             color: white;
@@ -176,43 +152,34 @@
             width: 100px;
             float: right;
         }
-
         #closeFeedback:hover {
             background-color: #ff3333;
         }
-
         @media only screen and (max-width: 600px) {
             .title {
                 font-size: 2em;
             }
-
             input, textarea {
                 font-size: 1em;
             }
-
             button {
                 font-size: 1.2em;
                 width: 80%;
             }
-
             #result, #propaganda {
                 font-size: 1.2em;
                 width: 70%;
             }
-
             .probabilitati {
                 font-size: 1em;
             }
-
             .button-container {
                 flex-direction: column;
             }
-
             button {
                 width: 100%;
                 margin-bottom: 10px;
             }
-
             .reset-button {
                 width: 100%;
             }
@@ -246,9 +213,11 @@
                 if (result.predictie_fake_news === 'Adevărată') {
                     resultDiv.classList.add('result-adevarat');
                     resultDiv.innerText = `Predicție Știrii: ${result.predictie_fake_news}`;
-                } else {
+                } else if (result.predictie_fake_news === 'Falsă') {
                     resultDiv.classList.add('result-fals');
                     resultDiv.innerText = `Predicție Știrii: ${result.predictie_fake_news}`;
+                } else {
+                    resultDiv.innerText = "Predicție Știrii: Nedefinită";
                 }
 
                 probabilitatiDiv.innerText = 
