@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template
 import joblib
 import re
 import os
+import json
 import psycopg2
 from psycopg2 import sql
 from sklearn.feature_extraction.text import TfidfVectorizer
